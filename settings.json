@@ -1,6 +1,7 @@
 {
   "database_name": "asa_connect_analyse.db",
   "use_database": true,
+  "multithreading": false,
   "app_logs_path": "./logs/app.log",
   "source_logs_path": "./source_logs",
   "top_clients_count": 10,
