@@ -19,6 +19,7 @@ class SqliteDb:
             self.connect_db()
             self.create_database()
             log.info(f"DB {self.db_name} has been created. {self.connection}")
+            self.close_connection()
         else:
             log.info(f"DB {self.db_name} exists")
             self.connect_db()
@@ -155,11 +156,15 @@ def load_settings(path):
         settings = json.load(f)
     return  settings
 
-
 def analyze_asa_logs(asa_log_file_path):
     clients = []
     servers = []
     cryptos = []
+
+    if SETTINGS["use_database"]:
+        app_database = SqliteDb()
+        app_database.connect_db()
+
     is_new_file_asa_log_file = True
 
     client_pattern = r"client outside:([0-9.]+)"
@@ -211,6 +216,7 @@ def analyze_asa_logs(asa_log_file_path):
                     else:
                         log.warning(f"File {asa_log_file_path}:{asa_log_sha256 } skipped. It's already been added to {app_database.db_name}")
                         pass
+        if SETTINGS["use_database"]: app_database.close_connection()
 
         # TOP 10,  clients, servers, cpyptos
         top_clients = Counter(clients).most_common(SETTINGS['top_clients_count'])
@@ -240,20 +246,28 @@ def main ():
     log = logger_to_file(file_path=SETTINGS['app_logs_path'], level="DEBUG")
     log.info("Initiate")
 
-    if SETTINGS['use_database']:
-        global app_database
-        app_database = SqliteDb()
+    # if SETTINGS['use_database']:
+    #     app_database = SqliteDb
     threads = []
     # ASA Logs parsing
     if os.path.isdir(SETTINGS["source_logs_path"]):
         for asa_log in os.listdir(SETTINGS["source_logs_path"]):
             if os.path.isfile(os.path.join(SETTINGS["source_logs_path"], asa_log)):
                 asa_log_file_path = os.path.join(SETTINGS["source_logs_path"], asa_log)
-                analyze_asa_logs(asa_log_file_path=asa_log_file_path)
+                if SETTINGS['multithreading']:
+                    thread = threading.Thread(target=analyze_asa_logs, args=(asa_log_file_path,))
+                    threads.append(thread)
+                    thread.start()
+                else:
+                    analyze_asa_logs(asa_log_file_path=asa_log_file_path)
     else:
         analyze_asa_logs(asa_log_file_path=SETTINGS["source_logs_path"])
 
-    if SETTINGS['use_database']: app_database.close_connection()
+    if SETTINGS['multithreading']:
+        for thread in threads:
+            thread.join()
+
+    # if SETTINGS['use_database']: app_database.close_connection()
 
 if __name__ == '__main__':
     main()
