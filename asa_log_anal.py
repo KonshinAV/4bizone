@@ -8,8 +8,6 @@ import hashlib
 import threading
 from collections import Counter
 from datetime import datetime, timedelta
-from operator import contains
-from threading import Thread
 
 class SqliteDb:
     def __init__(self, db_name="asa_connect_analyse.db"):
@@ -31,28 +29,33 @@ class SqliteDb:
     def create_database(self):
         cursor = self.connection.cursor()
 
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS asa_log_files(
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                log_sha TEXT NOT NULL UNIQUE,
-                log_path TEXT NOT NULL
-            )
-        ''')
+        try:
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS asa_log_files(
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    log_sha TEXT NOT NULL UNIQUE,
+                    log_path TEXT NOT NULL
+                )
+            ''')
 
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS connections (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                connection_date_time DATETIME NOT NULL, 
-                source_address TEXT NOT NULL,
-                source_port INTEGER NOT NULL,
-                destination_address TEXT NOT NULL,
-                destination_port INTEGER NOT NULL,
-                crypto_protocol TEXT NOT NULL,
-                asa_log_file_id INTEGER NOT NULL,
-                FOREIGN KEY (asa_log_file_id) REFERENCES asa_log_files (id)
-            )
-        ''')
-        self.connection.commit()
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS connections (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    connection_date_time DATETIME NOT NULL, 
+                    source_address TEXT NOT NULL,
+                    source_port INTEGER NOT NULL,
+                    destination_address TEXT NOT NULL,
+                    destination_port INTEGER NOT NULL,
+                    crypto_protocol TEXT NOT NULL,
+                    asa_log_file_id INTEGER NOT NULL,
+                    FOREIGN KEY (asa_log_file_id) REFERENCES asa_log_files (id)
+                )
+            ''')
+            self.connection.commit()
+        except Exception as ex:
+            log.critical(f"Error with database {self.db_name} creation. Exception {ex}")
+            log.critical(f"Emergency exit")
+            sys.exit(-1)
 
     def add_asa_log_file_record(self, log_sha, log_path):
         cursor = self.connection.cursor()
@@ -109,6 +112,26 @@ class SqliteDb:
         except Exception as ex:
             log.error(f"delete_connection_records_older_than error. Ex: {ex}")
 
+    def get_all_connection_records(self):
+        try:
+            cursor = self.connection.cursor()
+            cursor.execute("""
+                SELECT connections.id,
+                    connections.connection_date_time,
+                    connections.source_address,
+                    connections.source_port,
+                    connections.destination_address,
+                    connections.destination_port,
+                    connections.crypto_protocol,
+                    asa_log_files.log_sha,
+                    asa_log_files.log_path
+                FROM connections 
+                JOIN asa_log_files ON connections.asa_log_file_id = asa_log_files.id
+            """)
+            rows = cursor.fetchall()
+            return rows
+        except Exception as ex:
+            log.error(f"get_connection_records error. Ex: {ex}")
 
     def close_connection(self):
         try:
@@ -238,16 +261,8 @@ def analyze_asa_logs(asa_log_file_path):
     else:
         log.warning(f"There is some problem with {asa_log_file_path}, file has been skipped")
 
-def main ():
-    if not os.path.exists("logs"): os.makedirs("logs")
-    global SETTINGS
-    SETTINGS = load_settings(path='settings.json')
-    global log
-    log = logger_to_file(file_path=SETTINGS['app_logs_path'], level="DEBUG")
-    log.info("Initiate")
-
-    # if SETTINGS['use_database']:
-    #     app_database = SqliteDb
+def collector_mode ():
+    log.warning(f"Collector_mode set to Multithreading mode.") if SETTINGS['multithreading'] else log.info(f"Collector_mode set to Iterate mode.")
     threads = []
     # ASA Logs parsing
     if os.path.isdir(SETTINGS["source_logs_path"]):
@@ -267,10 +282,12 @@ def main ():
         for thread in threads:
             thread.join()
 
-    # if SETTINGS['use_database']: app_database.close_connection()
-
 if __name__ == '__main__':
-    main()
-
+    if not os.path.exists("logs"): os.makedirs("logs")
+    SETTINGS = load_settings(path='settings.json')
+    log = logger_to_file(file_path=SETTINGS['app_logs_path'], level="DEBUG")
+    log.info("Initiate")
+    collector_mode()
+    log.info(f"All tasks competed")
 
 
