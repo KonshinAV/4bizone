@@ -233,6 +233,7 @@ def analyze_asa_logs(asa_log_file_path):
         log.warning(f"There is some problem with {asa_log_file_path}, file has been skipped")
 
 def main ():
+    if not os.path.exists("logs"): os.makedirs("logs")
     global SETTINGS
     SETTINGS = load_settings(path='settings.json')
     global log
