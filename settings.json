@@ -3,7 +3,7 @@
   "use_database": true,
   "multithreading": true,
   "app_logs_path": "./logs/app.log",
-  "source_logs_path": "./source_logs",
+  "source_logs_path": "./source_logs/",
   "top_clients_count": 10,
   "top_servers_count": 10,
   "top_cpyptos_count": 10
