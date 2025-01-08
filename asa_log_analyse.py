@@ -241,7 +241,7 @@ def analyze_asa_logs(asa_log_file_path):
                         pass
         if SETTINGS["use_database"]: app_database.close_connection()
 
-        # TOP 10,  clients, servers, cpyptos
+        # TOP X,  clients, servers, cpyptos
         top_clients = Counter(clients).most_common(SETTINGS['top_clients_count'])
         top_servers = Counter(servers).most_common(SETTINGS['top_servers_count'])
         top_cryptos = Counter(cryptos).most_common(SETTINGS['top_cpyptos_count'])
