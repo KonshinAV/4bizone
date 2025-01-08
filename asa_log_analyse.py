@@ -285,7 +285,7 @@ def collector_mode ():
 if __name__ == '__main__':
     if not os.path.exists("logs"): os.makedirs("logs")
     SETTINGS = load_settings(path='settings.json')
-    log = logger_to_file(file_path=SETTINGS['app_logs_path'], level="DEBUG")
+    log = logger_to_file(file_path=SETTINGS['app_logs_path'], level=SETTINGS['log_level'])
     log.info("Initiate")
     collector_mode()
     log.info(f"All tasks competed")

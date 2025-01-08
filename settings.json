@@ -1,5 +1,6 @@
 {
   "database_name": "asa_connect_analyse.db",
+  "log_level": "INFO",
   "use_database": true,
   "multithreading": true,
   "app_logs_path": "./logs/app.log",
